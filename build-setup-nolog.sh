@@ -6,7 +6,6 @@
 set -e
 set -o pipefail
 
-unamestr=$(uname)
 FDIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 cd "$FDIR"
 
@@ -27,17 +26,11 @@ do
    case "$1" in
         --library)
             IS_LIBRARY=true;
-            SKIP_TOOLCHAIN=true;
-            ;;
-        --skip-toolchain-extra)
-            SKIP_TOOLCHAIN=true;
-            ;;
-        --skip-validate)
             ;;
         --unpinned-deps)
             USE_PINNED_DEPS=false;
             ;;
-        -h | -H | --help)
+        -h | -H | --help | -help)
             usage
             exit 3
             ;;
@@ -52,15 +45,6 @@ do
     esac
     shift
 done
-
-if [ "$IS_LIBRARY" = true ]; then
-    if [ -z "$RISCV" ]; then
-        echo "ERROR: You must set the RISCV environment variable before running."
-        exit 4
-    else
-        echo "Using existing RISCV toolchain at $RISCV"
-    fi
-fi
 
 # Remove and backup the existing env.sh if it exists
 # The existing of env.sh implies this script completely correctly
@@ -86,61 +70,56 @@ END_INITIAL_ENV_SH
 
 env_append "export FIRESIM_ENV_SOURCED=1"
 
-# Conda setup
-if [ "$IS_LIBRARY" = true ]; then
-    # the chipyard conda environment should be installed already and be sufficient
-    if [ -z "${CONDA_DEFAULT_ENV+x}" ]; then
-        echo "ERROR: No conda environment detected. If using Chipyard, did you source 'env.sh'."
-        exit 5
-    fi
-else
-    # note: lock file must end in .conda-lock.yml - see https://github.com/conda-incubator/conda-lock/issues/154
-    if [ "$USE_PINNED_DEPS" = false ]; then
-        # auto-gen the lockfile
-	./scripts/generate-conda-lockfile.sh
-    fi
-    LOCKFILE="$(find $FDIR/conda-reqs/*.conda-lock.yml)"
+#### Conda setup ####
 
-    # create environment with conda-lock
-    conda-lock install --conda $(which conda) -p $FDIR/.conda-env $LOCKFILE
+# note: lock file must end in .conda-lock.yml - see https://github.com/conda-incubator/conda-lock/issues/154
+if [ "$USE_PINNED_DEPS" = false ]; then
+    # auto-gen the lockfile
+    ./scripts/generate-conda-lockfile.sh
+fi
+LOCKFILE="$(find $FDIR/conda-reqs/*.conda-lock.yml)"
 
-    # activate environment for downstream steps
-    source $FDIR/.conda-env/etc/profile.d/conda.sh
-    conda activate $FDIR/.conda-env
+# create environment with conda-lock
+conda-lock install --conda $(which conda) -p $FDIR/.conda-env $LOCKFILE
 
-    # Provide a sourceable snippet that can be used in subshells that may not have
-    # inhereted conda functions that would be brought in under a login shell that
-    # has run conda init (e.g., VSCode, CI)
-    read -r -d '\0' CONDA_ACTIVATE_PREAMBLE <<'END_CONDA_ACTIVATE'
+# activate environment for downstream steps
+source $FDIR/.conda-env/etc/profile.d/conda.sh
+conda activate $FDIR/.conda-env
+
+# add conda activation to env.sh
+# provide a sourceable snippet that can be used in subshells that may not have
+# inhereted conda functions that would be brought in under a login shell that
+# has run conda init (e.g., VSCode, CI)
+read -r -d '\0' CONDA_ACTIVATE_PREAMBLE <<'END_CONDA_ACTIVATE'
 if ! type conda >& /dev/null; then
     echo "::ERROR:: you must have conda in your environment first"
-    return 1  # don't want to exit here because this file is sourced
 fi
 
 # if we're sourcing this in a sub process that has conda in the PATH but not as a function, init it again
 conda activate --help >& /dev/null || source $(conda info --base)/etc/profile.d/conda.sh
 \0
 END_CONDA_ACTIVATE
-    env_append "$CONDA_ACTIVATE_PREAMBLE"
-    env_append "conda activate $FDIR/.conda-env"
-fi
+env_append "$CONDA_ACTIVATE_PREAMBLE"
+env_append "conda activate $FDIR/.conda-env"
+
+# add other toolchain utilities to environment (spike, fesvr, pk)
+./scripts/build-toolchain-extra.sh -p $RISCV
 
 # init all submodules except for chipyard
 git config submodule.target-design/chipyard.update none
 git submodule update --init --recursive
 
-# Chipyard setup
-if [ "$IS_LIBRARY" = true ]; then
-    # setup marshal symlink (for convenience)
-    ln -sf ../../../software/firemarshal $FDIR/sw/firesim-software
+#### Chipyard setup ####
 
-    # source cy env.sh in library-mode
-    env_append "source $FDIR/../../env.sh"
+if [ "$IS_LIBRARY" = true ]; then
+    CHIPYARD_DIR="$FDIR/../../.."
 else
+    CHIPYARD_DIR="$FDIR/target-design/chipyard"
+
     # this checks if firemarshal has already been configured by someone. If
     # not, we will provide our own config. This must be checked before calling
     # chipyard setup because that will configure firemarshal.
-    marshal_cfg="$FDIR/target-design/chipyard/software/firemarshal/marshal-config.yaml"
+    marshal_cfg="$CHIPYARD_DIR/software/firemarshal/marshal-config.yaml"
     if [ ! -f "$marshal_cfg" ]; then
       first_init=true
     else
@@ -150,11 +129,10 @@ else
     git config --unset submodule.target-design/chipyard.update
     git submodule update --init target-design/chipyard
 
-    pushd $FDIR/target-design/chipyard
+    # setup chipyard (it has it's own conda environment)
+    pushd "$CHIPYARD_DIR"
     ./build-setup.sh \
-        --skip-conda `# skip conda setup since we share it with chipyard` \
         --skip-ctags `# skip ctags for speed` \
-        --skip-precompile `# skip pre-compilation of cy sources for speed` \
         --skip-firesim `# skip firesim setup since we are running in top-mode` \
         --skip-marshal `# skip firemarshal for speed`
     popd
@@ -174,9 +152,14 @@ else
     env_append "source $FDIR/scripts/fix-open-files.sh"
 fi
 
+
+# setup marshal symlink (for convenience)
+ln -sf ${CHIPYARD_DIR}/software/firemarshal $FDIR/sw/firesim-software
+
 cd "$FDIR"
 
-# commands to run only on EC2
+#### EC2-only setup ####
+
 # see if the instance info page exists. if not, we are not on ec2.
 # this is one of the few methods that works without sudo
 if wget -T 1 -t 3 -O /dev/null http://169.254.169.254/latest/; then
