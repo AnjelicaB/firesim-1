@@ -72,22 +72,48 @@ env_append "export FIRESIM_ENV_SOURCED=1"
 
 #### Conda setup ####
 
-# note: lock file must end in .conda-lock.yml - see https://github.com/conda-incubator/conda-lock/issues/154
-if [ "$USE_PINNED_DEPS" = false ]; then
-    # auto-gen the lockfile
-    ./scripts/generate-conda-lockfile.sh
+if [ "$IS_LIBRARY" = true ]; then
+    # the chipyard conda environment should be installed already and have all requirements
+    if [ -z "${CONDA_DEFAULT_ENV+x}" ]; then
+        echo "ERROR: No conda environment detected. If using Chipyard, did you source 'env.sh'."
+        exit 5
+    fi
+else
+    # create the firesim environment with all requirements (chipyard's, firemarshal's, etc)
+
+    # note: lock file must end in .conda-lock.yml - see https://github.com/conda-incubator/conda-lock/issues/154
+    if [ "$USE_PINNED_DEPS" = false ]; then
+	# auto-gen the lockfile
+	./scripts/generate-conda-lockfile.sh
+    fi
+    LOCKFILE="$(find $FDIR/conda-reqs/*.conda-lock.yml)"
+
+    # create environment with conda-lock
+    conda-lock install --conda $(which conda) -p $FDIR/.conda-env $LOCKFILE
+
+    # activate environment for downstream steps
+    source $FDIR/.conda-env/etc/profile.d/conda.sh
+    conda activate $FDIR/.conda-env
+
+    # add other toolchain utilities to environment (spike, fesvr, pk)
+    ./scripts/build-toolchain-extra.sh -p $RISCV
+
+    # provide a sourceable snippet that can be used in subshells that may not have
+    # inhereted conda functions that would be brought in under a login shell that
+    # has run conda init (e.g., VSCode, CI)
+    read -r -d '\0' CONDA_ACTIVATE_PREAMBLE <<'END_CONDA_ACTIVATE'
+if ! type conda >& /dev/null; then
+    echo "::ERROR:: you must have conda in your environment first"
+    return 1  # don't want to exit here because this file is sourced
 fi
-LOCKFILE="$(find $FDIR/conda-reqs/*.conda-lock.yml)"
 
-# create environment with conda-lock
-conda-lock install --conda $(which conda) -p $FDIR/.conda-env $LOCKFILE
+source $(conda info --base)/etc/profile.d/conda.sh
+\0
+END_CONDA_ACTIVATE
+    env_append "$CONDA_ACTIVATE_PREAMBLE"
+    env_append "conda activate $FDIR/.conda-env"
+fi
 
-# activate environment for downstream steps
-source $FDIR/.conda-env/etc/profile.d/conda.sh
-conda activate $FDIR/.conda-env
-
-# add other toolchain utilities to environment (spike, fesvr, pk)
-./scripts/build-toolchain-extra.sh -p $RISCV
 
 # init all submodules except for chipyard
 git config submodule.target-design/chipyard.update none
@@ -99,7 +125,6 @@ if [ "$IS_LIBRARY" = true ]; then
     CHIPYARD_DIR="$FDIR/../../.."
 
     # chipyard env.sh should be sourced in library mode.
-    # it should (1) source chipyard's env then (2) --stack firesim's ontop
     env_append "conda activate $CHIPYARD_DIR/env.sh"
 else
     CHIPYARD_DIR="$FDIR/target-design/chipyard"
@@ -120,6 +145,7 @@ else
     # setup chipyard (it has it's own conda environment)
     pushd "$CHIPYARD_DIR"
     ./build-setup.sh \
+	--skip-conda `# skip conda setup since we share it with chipyard` \
         --skip-ctags `# skip ctags for speed` \
         --skip-firesim `# skip firesim setup since we are running in top-mode` \
         --skip-marshal `# skip firemarshal for speed`
