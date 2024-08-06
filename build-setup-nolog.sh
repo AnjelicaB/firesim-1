@@ -73,6 +73,14 @@ env_append "export FIRESIM_ENV_SOURCED=1"
 #### Conda setup ####
 
 if [ "$IS_LIBRARY" = true ]; then
+    # old code from before (probably redundant w/ other check below)
+    if [ -z "$RISCV" ]; then
+        echo "ERROR: You must set the RISCV environment variable before running."
+        exit 4
+    else
+        echo "Using existing RISCV toolchain at $RISCV"
+    fi
+
     # the chipyard conda environment should be installed already and have all requirements
     if [ -z "${CONDA_DEFAULT_ENV+x}" ]; then
         echo "ERROR: No conda environment detected. If using Chipyard, did you source 'env.sh'."
@@ -125,7 +133,7 @@ if [ "$IS_LIBRARY" = true ]; then
     CHIPYARD_DIR="$FDIR/../../.."
 
     # chipyard env.sh should be sourced in library mode.
-    env_append "conda activate $CHIPYARD_DIR/env.sh"
+    env_append "source $CHIPYARD_DIR/env.sh"
 else
     CHIPYARD_DIR="$FDIR/target-design/chipyard"
 
@@ -164,23 +172,6 @@ else
     env_append "export FIRESIM_STANDALONE=1"
     env_append "export PATH=$FDIR/sw/firesim-software:\$PATH"
     env_append "source $FDIR/scripts/fix-open-files.sh"
-
-    # source chipyard's env.sh followed by ours with --stack
-    env_append "conda activate $CHIPYARD_DIR/env.sh"
-    # provide a sourceable snippet that can be used in subshells that may not have
-    # inhereted conda functions that would be brought in under a login shell that
-    # has run conda init (e.g., VSCode, CI)
-    read -r -d '\0' CONDA_ACTIVATE_PREAMBLE <<'END_CONDA_ACTIVATE'
-if ! type conda >& /dev/null; then
-    echo "::ERROR:: you must have conda in your environment first"
-    return 1  # don't want to exit here because this file is sourced
-fi
-
-source $(conda info --base)/etc/profile.d/conda.sh
-\0
-END_CONDA_ACTIVATE
-    env_append "$CONDA_ACTIVATE_PREAMBLE"
-    env_append "conda activate --stack $FDIR/.conda-env"
 fi
 
 
