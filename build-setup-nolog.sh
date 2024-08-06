@@ -86,22 +86,6 @@ conda-lock install --conda $(which conda) -p $FDIR/.conda-env $LOCKFILE
 source $FDIR/.conda-env/etc/profile.d/conda.sh
 conda activate $FDIR/.conda-env
 
-# add conda activation to env.sh
-# provide a sourceable snippet that can be used in subshells that may not have
-# inhereted conda functions that would be brought in under a login shell that
-# has run conda init (e.g., VSCode, CI)
-read -r -d '\0' CONDA_ACTIVATE_PREAMBLE <<'END_CONDA_ACTIVATE'
-if ! type conda >& /dev/null; then
-    echo "::ERROR:: you must have conda in your environment first"
-fi
-
-# if we're sourcing this in a sub process that has conda in the PATH but not as a function, init it again
-conda activate --help >& /dev/null || source $(conda info --base)/etc/profile.d/conda.sh
-\0
-END_CONDA_ACTIVATE
-env_append "$CONDA_ACTIVATE_PREAMBLE"
-env_append "conda activate $FDIR/.conda-env"
-
 # add other toolchain utilities to environment (spike, fesvr, pk)
 ./scripts/build-toolchain-extra.sh -p $RISCV
 
@@ -113,6 +97,10 @@ git submodule update --init --recursive
 
 if [ "$IS_LIBRARY" = true ]; then
     CHIPYARD_DIR="$FDIR/../../.."
+
+    # chipyard env.sh should be sourced in library mode.
+    # it should (1) source chipyard's env then (2) --stack firesim's ontop
+    env_append "conda activate $CHIPYARD_DIR/env.sh"
 else
     CHIPYARD_DIR="$FDIR/target-design/chipyard"
 
@@ -150,6 +138,23 @@ else
     env_append "export FIRESIM_STANDALONE=1"
     env_append "export PATH=$FDIR/sw/firesim-software:\$PATH"
     env_append "source $FDIR/scripts/fix-open-files.sh"
+
+    # source chipyard's env.sh followed by ours with --stack
+    env_append "conda activate $CHIPYARD_DIR/env.sh"
+    # provide a sourceable snippet that can be used in subshells that may not have
+    # inhereted conda functions that would be brought in under a login shell that
+    # has run conda init (e.g., VSCode, CI)
+    read -r -d '\0' CONDA_ACTIVATE_PREAMBLE <<'END_CONDA_ACTIVATE'
+if ! type conda >& /dev/null; then
+    echo "::ERROR:: you must have conda in your environment first"
+    return 1  # don't want to exit here because this file is sourced
+fi
+
+source $(conda info --base)/etc/profile.d/conda.sh
+\0
+END_CONDA_ACTIVATE
+    env_append "$CONDA_ACTIVATE_PREAMBLE"
+    env_append "conda activate --stack $FDIR/.conda-env"
 fi
 
 

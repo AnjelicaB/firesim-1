@@ -17,13 +17,15 @@ define COPY_IF_NOT_EQUAL
   fi
 endef
 
+CHIPYARD_STAGING_DIR := $(chipyard_dir)/sims/firesim-staging
+
 # this rule always is run, but may not update the timestamp of the targets (depending on what the Chipyard make does).
 # if that is the case (Chipyard make doesn't update it's outputs), then downstream rules *should* be skipped.
 $(FIRRTL_FILE) $(ANNO_FILE) &: SHELL := /usr/bin/env bash # needed for running source in recipe
 $(FIRRTL_FILE) $(ANNO_FILE) &: force_rule_to_run
 	@mkdir -p $(@D)
 	source $(chipyard_dir)/env.sh && \
-		make -C $(chipyard_dir)/sims/firesim-wrapper \
+		make -C $(CHIPYARD_STAGING_DIR) \
 			SBT_PROJECT=$(TARGET_SBT_PROJECT) \
 			MODEL=$(DESIGN) \
 			MODEL_PACKAGE=$(DESIGN_PACKAGE) \
@@ -34,8 +36,8 @@ $(FIRRTL_FILE) $(ANNO_FILE) &: force_rule_to_run
 			TB=unused \
 			TOP=unused
 	# $(long_name) must be same as Chipyard
-	$(call COPY_IF_NOT_EQUAL,$(chipyard_dir)/sims/firesim-wrapper/generated-src/$(long_name)/$(long_name).fir,$(FIRRTL_FILE))
-	$(call COPY_IF_NOT_EQUAL,$(chipyard_dir)/sims/firesim-wrapper/generated-src/$(long_name)/$(long_name).anno.json,$(ANNO_FILE))
+	$(call COPY_IF_NOT_EQUAL,$(CHIPYARD_STAGING_DIR)/generated-src/$(long_name)/$(long_name).fir,$(FIRRTL_FILE))
+	$(call COPY_IF_NOT_EQUAL,$(CHIPYARD_STAGING_DIR)/generated-src/$(long_name)/$(long_name).anno.json,$(ANNO_FILE))
 
 #######################################
 # Setup Extra Verilator Compile Flags #
