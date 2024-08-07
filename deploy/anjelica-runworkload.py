@@ -23,7 +23,7 @@ try:
     else :
         read_rate = 0
 except:
-    print(" Usage: python3 anjelica-runworkload.py <hwdb> <trace_en/disable> <wl_file> \n"+
+    print(" Usage: python3 anjelica-runworkload.py <hwdb> <wl_file> <trace_en/disable> [<output_format>, <trigger_selector>, [<start>, <end>]] [+read_rate=0]\n"+
           " python3 anjelica-runworkload.py alveo_u280_firesim_rocket_singlecore_no_nic yes linux-uniform.json"
           )
     exit()
