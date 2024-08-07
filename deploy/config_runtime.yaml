@@ -22,79 +22,79 @@ run_farm:
     #     # by "four_fpgas_spec" below.
     #     - "111.111.1.111": four_fpgas_spec
     run_farm_hosts_to_use:
-        - localhost: one_fpgas_spec
+    - localhost: one_fpgas_spec
 
 metasimulation:
   metasimulation_enabled: false
   # vcs or verilator. use vcs-debug or verilator-debug for waveform generation
   metasimulation_host_simulator: verilator
   # plusargs passed to the simulator for all metasimulations
-  metasimulation_only_plusargs: "+fesvr-step-size=128 +max-cycles=100000000"
+  metasimulation_only_plusargs: +fesvr-step-size=128 +max-cycles=100000000
   # plusargs passed to the simulator ONLY FOR vcs metasimulations
-  metasimulation_only_vcs_plusargs: "+vcs+initreg+0 +vcs+initmem+0"
+  metasimulation_only_vcs_plusargs: +vcs+initreg+0 +vcs+initmem+0
 
 target_config:
-    topology: no_net_config
-    no_net_num_nodes: 1
-    link_latency: 6405
-    switching_latency: 10
-    net_bandwidth: 200
-    profile_interval: -1
+  topology: no_net_config
+  no_net_num_nodes: 1
+  link_latency: 6405
+  switching_latency: 10
+  net_bandwidth: 200
+  profile_interval: -1
 
     # This references a section from config_hwdb.yaml for fpga-accelerated simulation
     # or from config_build_recipes.yaml for metasimulation
     # In homogeneous configurations, use this to set the hardware config deployed
     # for all simulators
-    default_hw_config: alveo_u280_firesim_gemmini_rocket_singlecore_no_nic
+  default_hw_config: alveo_u280_firesim_medium_custom_counter_gemmini_rocket_singlecore_no_nic
 
     # Advanced: Specify any extra plusargs you would like to provide when
     # booting the simulator (in both FPGA-sim and metasim modes). This is
     # a string, with the contents formatted as if you were passing the plusargs
     # at command line, e.g. "+a=1 +b=2"
-    plusarg_passthrough: ""
+  plusarg_passthrough: ''
 
 tracing:
-    enable: no
+  enable: yes
 
     # Trace output formats. Only enabled if "enable" is set to "yes" above
     # 0 = human readable; 1 = binary (compressed raw data); 2 = flamegraph (stack
     # unwinding -> Flame Graph)
-    output_format: 0
+  output_format: 2
 
     # Trigger selector.
     # 0 = no trigger; 1 = cycle count trigger; 2 = program counter trigger; 3 =
     # instruction trigger
-    selector: 1
-    start: 0
-    end: -1
+  selector: 3
+  start: ffffffff00008013
+  end: ffffffff00010013
 
 autocounter:
-    read_rate: 0
+  read_rate: 100
 
 workload:
-    workload_name: linux-uniform.json
-    terminate_on_completion: no
-    suffix_tag: null
+  workload_name: simple_matmul-linux.json
+  terminate_on_completion: yes
+  suffix_tag:
 
 host_debug:
     # When enabled (=yes), Zeros-out FPGA-attached DRAM before simulations
     # begin (takes 2-5 minutes).
     # In general, this is not required to produce deterministic simulations on
     # target machines running linux. Enable if you observe simulation non-determinism.
-    zero_out_dram: no
+  zero_out_dram: no
     # If disable_synth_asserts: no, simulation will print assertion message and
     # terminate simulation if synthesized assertion fires.
     # If disable_synth_asserts: yes, simulation ignores assertion firing and
     # continues simulation.
-    disable_synth_asserts: no
+  disable_synth_asserts: no
 
 # DOCREF START: Synthesized Prints
 synth_print:
     # Start and end cycles for outputting synthesized prints.
     # They are given in terms of the base clock and will be converted
     # for each clock domain.
-    start: 0
-    end: -1
+  start: 0
+  end: -1
     # When enabled (=yes), prefix print output with the target cycle at which the print was triggered
-    cycle_prefix: yes
+  cycle_prefix: yes
 # DOCREF END: Synthesized Prints
