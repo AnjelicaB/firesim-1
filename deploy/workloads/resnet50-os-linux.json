@@ -1,0 +1,8 @@
+{
+	"benchmark_name": "resnet50-os-linux",
+	"common_simulation_outputs": [
+		"uartlog"
+	],
+	"common_bootbinary": "../../../../../software/firemarshal/images/firechip/resnet50-os-linux/resnet50-os-linux-bin",
+	"common_rootfs": "../../../../../software/firemarshal/images/firechip/resnet50-os-linux/resnet50-os-linux.img"
+}

@@ -1,0 +1,4 @@
+This workload was generated using FireMarshal. See the following config
+and workload directory for details:
+../../../../../software/firemarshal/workloads/custom-workloads/marshal-configs/matmul_fence-linux-Tr.yaml
+../../../../../software/firemarshal/workloads/custom-workloads

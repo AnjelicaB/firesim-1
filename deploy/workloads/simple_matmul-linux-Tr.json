@@ -1,0 +1,8 @@
+{
+	"benchmark_name": "simple_matmul-linux-Tr",
+	"common_simulation_outputs": [
+		"uartlog"
+	],
+	"common_bootbinary": "../../../../../software/firemarshal/images/firechip/simple_matmul-linux-Tr/simple_matmul-linux-Tr-bin",
+	"common_rootfs": "../../../../../software/firemarshal/images/firechip/simple_matmul-linux-Tr/simple_matmul-linux-Tr.img"
+}

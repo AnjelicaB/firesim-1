@@ -1,0 +1,8 @@
+{
+	"benchmark_name": "simple_matmul_fence-linux",
+	"common_simulation_outputs": [
+		"uartlog"
+	],
+	"common_bootbinary": "../../../../../software/firemarshal/images/firechip/simple_matmul_fence-linux/simple_matmul_fence-linux-bin",
+	"common_rootfs": "../../../../../software/firemarshal/images/firechip/simple_matmul_fence-linux/simple_matmul_fence-linux.img"
+}
