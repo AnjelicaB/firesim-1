@@ -87,3 +87,24 @@ nitefury_firesim_rocket_singlecore_no_nic:
     bitstream_tar: https://raw.githubusercontent.com/firesim/firesim-public-bitstreams/c4a87572102e86f06da0cf86bcf2d88bb1a52552/rhsresearch_nitefury_ii/nitefury_firesim_rocket_singlecore_no_nic.tar.gz
     deploy_quintuplet_override: null
     custom_runtime_config: null
+
+# Anjelica's custom hardware config
+alveo_u280_firesim_gemmini_rocket_singlecore_no_nic:
+    bitstream_tar: file:///home/anjelica/chipyard/sims/firesim/deploy/results-build/alveo_u280_firesim_gemmini_rocket_singlecore_no_nic.tar.gz
+    deploy_quintuplet_override: null
+    custom_runtime_config: null
+
+alveo_u280_firesim_mediumgemmini_rocket_singlecore_no_nic:
+    bitstream_tar: file:///home/anjelica/chipyard/sims/firesim/deploy/results-build/alveo_u280_firesim_mediumgemmini_rocket_singlecore_no_nic.tar.gz
+    deploy_quintuplet_override: null
+    custom_runtime_config: null
+
+alveo_u280_firesim_printfgemmini_rocket_singlecore_no_nic:
+    bitstream_tar: file:///home/anjelica/chipyard/sims/firesim/deploy/results-build/alveo_u280_firesim_printfgemmini_rocket_singlecore_no_nic.tar.gz
+    deploy_quintuplet_override: null
+    custom_runtime_config: null
+
+alveo_u280_firesim_medium_custom_counter_gemmini_rocket_singlecore_no_nic:
+    bitstream_tar: file:///home/anjelica/chipyard/sims/firesim/deploy/results-build/alveo_u280_firesim_medium_custom_counter_gemmini_rocket_singlecore_no_nic.tar.gz
+    deploy_quintuplet_override: null
+    custom_runtime_config: null
